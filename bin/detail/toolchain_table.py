@@ -1,4 +1,4 @@
-# Copyright (c) 2014, Ruslan Baratov
+# Copyright (c) 2014, Ruslan Baratov & Luca Martini
 # All rights reserved.
 
 import os
@@ -13,7 +13,8 @@ class Toolchain:
       vs_version='',
       ios_version='',
       osx_version='',
-      xp=False
+      xp=False,
+      nocodesign=False,
   ):
     self.name = name
     self.generator = generator
@@ -27,6 +28,7 @@ class Toolchain:
     self.xp = xp
     self.is_xcode = (self.generator == 'Xcode')
     self.multiconfig = (self.is_xcode or self.is_msvc)
+    self.nocodesign = nocodesign
     self.verify()
 
   def verify(self):
@@ -43,7 +45,27 @@ class Toolchain:
     if self.xp:
       assert(self.vs_version)
 
-toolchain_table = [Toolchain('default', '')]
+toolchain_table = [
+    Toolchain('default', ''),
+    Toolchain('android-ndk-r10e-api-8-armeabi-v7a', 'Unix Makefiles'),
+    Toolchain('android-ndk-r10e-api-16-armeabi-v7a-neon', 'Unix Makefiles'),
+    Toolchain('android-ndk-r10e-api-16-armeabi-v7a-neon-clang-35', 'Unix Makefiles'),
+    Toolchain('android-ndk-r10e-api-16-armeabi-v7a-neon-clang-35-hid', 'Unix Makefiles'),
+    Toolchain('android-ndk-r10e-api-16-x86', 'Unix Makefiles'),
+    Toolchain('android-ndk-r10e-api-16-x86-hid', 'Unix Makefiles'),
+    Toolchain('android-ndk-r10e-api-19-armeabi-v7a-neon', 'Unix Makefiles'),
+    Toolchain('android-ndk-r10e-api-21-armeabi-v7a', 'Unix Makefiles'),
+    Toolchain('android-ndk-r10e-api-21-armeabi-v7a-neon', 'Unix Makefiles'),
+    Toolchain('android-ndk-r10e-api-21-armeabi-v7a-neon-clang-35', 'Unix Makefiles'),
+    Toolchain('android-ndk-r10e-api-21-arm64-v8a', 'Unix Makefiles'),
+    Toolchain('android-ndk-r10e-api-21-arm64-v8a-gcc-49', 'Unix Makefiles'),
+    Toolchain('android-ndk-r10e-api-21-arm64-v8a-gcc-49-hid', 'Unix Makefiles'),
+    Toolchain('android-ndk-r10e-api-21-arm64-v8a-clang-35', 'Unix Makefiles'),
+    Toolchain('android-ndk-r10e-api-21-x86', 'Unix Makefiles'),
+    Toolchain('android-ndk-r10e-api-21-x86-64', 'Unix Makefiles'),
+    Toolchain('android-ndk-r10e-api-21-x86-64-hid', 'Unix Makefiles'),
+    Toolchain('raspberrypi2-cxx11', 'Unix Makefiles')
+]
 
 if os.name == 'nt':
   toolchain_table += [
@@ -63,6 +85,18 @@ if os.name == 'nt':
       ),
       Toolchain(
           'vs-12-2013', 'Visual Studio 12 2013', arch='x86', vs_version='12'
+      ),
+      Toolchain(
+          'vs-10-2010', 'Visual Studio 10 2010', arch='x86', vs_version='10'
+      ),
+      Toolchain(
+          'vs-11-2012', 'Visual Studio 11 2012', arch='x86', vs_version='11'
+      ),
+      Toolchain(
+          'vs-14-2015', 'Visual Studio 14 2015', arch='x86', vs_version='14'
+      ),
+      Toolchain(
+          'vs-9-2008', 'Visual Studio 9 2008', arch='x86', vs_version='9'
       ),
       Toolchain(
           'vs-8-2005', 'Visual Studio 8 2005', arch='x86', vs_version='8'
@@ -96,20 +130,44 @@ if platform.system() == 'Linux':
 
 if platform.system() == 'Darwin':
   toolchain_table += [
+      Toolchain('ios-9-1-armv7', 'Xcode', ios_version='9.1'),
+      Toolchain('ios-9-1-arm64', 'Xcode', ios_version='9.1'),
+      Toolchain('ios-9-1-dep-7-0-armv7', 'Xcode', ios_version='9.1'),
+      Toolchain('ios-9-1-hid', 'Xcode', ios_version='9.1'),
+      Toolchain('ios-9-0', 'Xcode', ios_version='9.0'),
+      Toolchain('ios-9-0-armv7', 'Xcode', ios_version='9.0'),
+      Toolchain('ios-9-0-i386-armv7', 'Xcode', ios_version='9.0'),
+      Toolchain('ios-9-0-wo-armv7s', 'Xcode', ios_version='9.0'),
+      Toolchain('ios-9-0-dep-7-0-armv7', 'Xcode', ios_version='9.0'),
+      Toolchain('ios-8-4', 'Xcode', ios_version='8.4'),
+      Toolchain('ios-8-4-arm64', 'Xcode', ios_version='8.4'),
+      Toolchain('ios-8-4-armv7', 'Xcode', ios_version='8.4'),
+      Toolchain('ios-8-4-armv7s', 'Xcode', ios_version='8.4'),
+      Toolchain('ios-8-4-hid', 'Xcode', ios_version='8.4'),
       Toolchain('ios-8-2', 'Xcode', ios_version='8.2'),
       Toolchain('ios-8-2-i386-arm64', 'Xcode', ios_version='8.2'),
+      Toolchain('ios-8-2-arm64', 'Xcode', ios_version='8.2'),
+      Toolchain('ios-8-2-arm64-hid', 'Xcode', ios_version='8.2'),
       Toolchain('ios-8-2-cxx98', 'Xcode', ios_version='8.2'),
       Toolchain('ios-8-1', 'Xcode', ios_version='8.1'),
       Toolchain('ios-8-0', 'Xcode', ios_version='8.0'),
       Toolchain('ios-7-1', 'Xcode', ios_version='7.1'),
       Toolchain('ios-7-0', 'Xcode', ios_version='7.0'),
-      Toolchain('ios-nocodesign', 'Xcode', ios_version='7.1'),
+      Toolchain('ios-nocodesign', 'Xcode', ios_version='8.1', nocodesign=True),
+      Toolchain('ios-nocodesign-arm64', 'Xcode', ios_version='8.1', nocodesign=True),
+      Toolchain('ios-nocodesign-armv7', 'Xcode', ios_version='8.1', nocodesign=True),
+      Toolchain('ios-nocodesign-9-1', 'Xcode', ios_version='9.1', nocodesign=True),
+      Toolchain('ios-nocodesign-9-1-arm64', 'Xcode', ios_version='9.1', nocodesign=True),
+      Toolchain('ios-nocodesign-9-1-armv7', 'Xcode', ios_version='9.1', nocodesign=True),
       Toolchain('xcode', 'Xcode'),
+      Toolchain('xcode-gcc', 'Xcode'),
       Toolchain('osx-10-7', 'Xcode', osx_version='10.7'),
       Toolchain('osx-10-8', 'Xcode', osx_version='10.8'),
       Toolchain('osx-10-9', 'Xcode', osx_version='10.9'),
       Toolchain('osx-10-10', 'Xcode', osx_version='10.10'),
+      Toolchain('osx-10-11', 'Xcode', osx_version='10.11'),
       Toolchain('osx-10-10-dep-10-7', 'Xcode', osx_version='10.10'),
+      Toolchain('linux-gcc-x64', 'Unix Makefiles'),
   ]
 
 if os.name == 'posix':
@@ -118,9 +176,14 @@ if os.name == 'posix':
       Toolchain('clang-lto', 'Unix Makefiles'),
       Toolchain('clang-libstdcxx', 'Unix Makefiles'),
       Toolchain('gcc', 'Unix Makefiles'),
+      Toolchain('gcc-hid', 'Unix Makefiles'),
+      Toolchain('gcc-gold', 'Unix Makefiles'),
       Toolchain('gcc-pic', 'Unix Makefiles'),
       Toolchain('gcc-4-8', 'Unix Makefiles'),
+      Toolchain('gcc-cxx98', 'Unix Makefiles'),
       Toolchain('libcxx', 'Unix Makefiles'),
+      Toolchain('libcxx-hid', 'Unix Makefiles'),
+      Toolchain('libcxx-omp', 'Unix Makefiles'),
       Toolchain('sanitize-address', 'Unix Makefiles'),
   ]
 

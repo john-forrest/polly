@@ -106,6 +106,19 @@ if(NOT EXISTS ${IPHONEOS_SDK_ROOT})
   )
 endif()
 
+string(COMPARE EQUAL "${IOS_DEPLOYMENT_SDK_VERSION}" "" _is_empty)
+if(_is_empty)
+  set(
+      CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET
+      "${IOS_SDK_VERSION}"
+  )
+else()
+  set(
+      CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET
+      "${IOS_DEPLOYMENT_SDK_VERSION}"
+  )
+endif()
+
 # Emulate OpenCV toolchain --
 set(IOS YES)
 # -- end
@@ -125,3 +138,6 @@ foreach(arch ${IPHONESIMULATOR_ARCHS})
 endforeach()
 set(CMAKE_XCODE_ATTRIBUTE_ARCHS[sdk=iphonesimulator*] "${archs}")
 set(CMAKE_XCODE_ATTRIBUTE_VALID_ARCHS[sdk=iphonesimulator*] "${archs}")
+
+# Introduced in iOS 9.0
+set(CMAKE_XCODE_ATTRIBUTE_ENABLE_BITCODE NO)

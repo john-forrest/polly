@@ -9,33 +9,19 @@ endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/utilities/polly_init.cmake")
 
+set(OSX_SDK_VERSION "10.10")
+set(POLLY_XCODE_COMPILER "clang")
 polly_init(
-    "Xcode (OS X 10.10) / LLVM Standard C++ Library (libc++) / c++11 support"
+    "Xcode (OS X ${OSX_SDK_VERSION}) / \
+${POLLY_XCODE_COMPILER} / \
+LLVM Standard C++ Library (libc++) / c++11 support"
     "Xcode"
 )
 
 include("${CMAKE_CURRENT_LIST_DIR}/utilities/polly_common.cmake")
 
-execute_process(
-    COMMAND
-    xcrun --find clang
-    OUTPUT_VARIABLE
-    CMAKE_C_COMPILER
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+include("${CMAKE_CURRENT_LIST_DIR}/compiler/xcode.cmake")
 
-execute_process(
-    COMMAND
-    xcrun --find clang++
-    OUTPUT_VARIABLE
-    CMAKE_CXX_COMPILER
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-
-set(CMAKE_C_COMPILER ${CMAKE_C_COMPILER} CACHE STRING "C compiler" FORCE)
-set(CMAKE_CXX_COMPILER ${CMAKE_CXX_COMPILER} CACHE STRING "C++ compiler" FORCE)
-
-set(OSX_SDK_VERSION "10.10")
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.10" CACHE STRING "OS X Deployment target" FORCE)
 
 include("${CMAKE_CURRENT_LIST_DIR}/library/std/libcxx.cmake")

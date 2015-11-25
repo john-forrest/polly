@@ -5,11 +5,13 @@
 
 import argparse
 import os
+import platform
 import shutil
 import sys
 
 import detail.call
 import detail.cpack_generator
+import detail.create_framework
 import detail.generate_command
 import detail.get_nmake_environment
 import detail.ios_dev_root
@@ -17,7 +19,10 @@ import detail.logging
 import detail.open_project
 import detail.osx_dev_root
 import detail.pack_command
+import detail.rmtree
+import detail.target
 import detail.test_command
+import detail.timer
 import detail.toolchain_name
 import detail.toolchain_table
 import detail.verify_mingw_path
@@ -27,6 +32,12 @@ toolchain_table = detail.toolchain_table.toolchain_table
 
 assert(sys.version_info.major == 3)
 assert(sys.version_info.minor >= 2) # Current cygwin version is 3.2.3
+
+print(
+    'Python version: {}.{}'.format(
+        sys.version_info.major, sys.version_info.minor
+     )
+)
 
 description="""
 Script for building. Available toolchains:\n
@@ -57,7 +68,15 @@ parser.add_argument(
 )
 
 parser.add_argument('--test', action='store_true', help="Run ctest after build")
-parser.add_argument('--pack', action='store_true', help="Run cpack after build")
+parser.add_argument('--test-xml', help="Save ctest output to xml")
+
+parser.add_argument(
+    '--pack',
+    choices=detail.cpack_generator.available_generators,
+    nargs='?',
+    const=detail.cpack_generator.default(),
+    help="Run cpack after build"
+)
 parser.add_argument(
     '--nobuild', action='store_true', help="Do not build (only generate)"
 )
@@ -69,9 +88,33 @@ parser.add_argument(
     '--install', action='store_true', help="Run install (local directory)"
 )
 parser.add_argument(
+    '--framework', action='store_true', help="Create framework"
+)
+parser.add_argument(
+    '--framework-device',
+    action='store_true',
+    help="Create framework for device (exclude simulator architectures)"
+)
+parser.add_argument(
+    '--strip', action='store_true', help="Run strip/install cmake targets"
+)
+parser.add_argument(
+    '--identity',
+    help="Specify code signing identity for --framework"
+)
+parser.add_argument(
+    '--plist',
+    help="User specified Info.plist file for --framework"
+)
+parser.add_argument(
     '--clear',
     action='store_true',
     help="Remove build and install dirs before build"
+)
+parser.add_argument(
+    '--reconfig',
+    action='store_true',
+    help="Run configure even if CMakeCache.txt exists. Used to add new args."
 )
 parser.add_argument(
     '--fwd',
@@ -90,11 +133,36 @@ parser.add_argument(
     help="Number of concurrent build operations"
 )
 
+parser.add_argument(
+    '--target',
+    help="Target to build for the 'cmake --build' command"
+)
+
+def PositiveInt(string):
+  value = int(string)
+  if value > 0:
+    return value
+  m = 'Should be greater that zero: {}'.format(string)
+  raise argparse.ArgumentTypeError(m)
+
+parser.add_argument(
+    '--discard',
+    type=PositiveInt,
+    help='Option to reduce output. Discard every N lines of execution messages'
+        ' (note that full log is still available in log.txt)'
+)
+
+parser.add_argument(
+    '--tail',
+    type=PositiveInt,
+    help='Print last N lines if build failed'
+)
+
 args = parser.parse_args()
 
 polly_toolchain = detail.toolchain_name.get(args.toolchain)
 toolchain_entry = detail.toolchain_table.get_by_name(polly_toolchain)
-cpack_generator = detail.cpack_generator.get(args.pack)
+cpack_generator = args.pack
 
 polly_root = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')
 polly_root = os.path.realpath(polly_root)
@@ -127,7 +195,7 @@ if toolchain_entry.ios_version:
     print("Set environment DEVELOPER_DIR to {}".format(ios_dev_root))
     os.environ['DEVELOPER_DIR'] = ios_dev_root
 
-if toolchain_entry.name == 'ios-nocodesign':
+if toolchain_entry.nocodesign:
   xcconfig = os.path.join(polly_root, 'scripts', 'NoCodeSign.xcconfig')
   print("Set environment XCODE_XCCONFIG_FILE to {}".format(xcconfig))
   os.environ['XCODE_XCCONFIG_FILE'] = xcconfig
@@ -150,25 +218,36 @@ print("Build dir: {}".format(build_dir))
 build_dir_option = "-B{}".format(build_dir)
 
 install_dir = os.path.join(cdir, '_install', polly_toolchain)
-if args.install:
+local_install = args.install or args.framework or args.framework_device
+
+target = detail.target.Target()
+
+target.add(condition=local_install, name='install')
+target.add(condition=args.strip, name='install/strip')
+target.add(condition=args.target, name=args.target)
+
+# After 'target.add'
+if args.strip and not toolchain_entry.is_make:
+  sys.exit('CMake install/strip targets are only supported for the Unix Makefile generator')
+
+add_install_prefix = local_install or args.strip
+
+if add_install_prefix:
   install_dir_option = "-DCMAKE_INSTALL_PREFIX={}".format(install_dir)
 
+if (args.framework or args.framework_device) and platform.system() != 'Darwin':
+  sys.exit('Framework creation only for Mac OS X')
+framework_dir = os.path.join(cdir, '_framework', polly_toolchain)
+
 if args.clear:
-  if os.path.exists(build_dir):
-    print("Remove build directory: {}".format(build_dir))
-    shutil.rmtree(build_dir)
-  if os.path.exists(install_dir):
-    print("Remove install directory: {}".format(install_dir))
-    shutil.rmtree(install_dir)
-  if os.path.exists(build_dir):
-    sys.exit("Directory removing failed ({})".format(build_dir))
-  if os.path.exists(install_dir):
-    sys.exit("Directory removing failed ({})".format(install_dir))
+  detail.rmtree.rmtree(build_dir)
+  detail.rmtree.rmtree(install_dir)
+  detail.rmtree.rmtree(framework_dir)
 
 polly_temp_dir = os.path.join(build_dir, '_3rdParty', 'polly')
 if not os.path.exists(polly_temp_dir):
   os.makedirs(polly_temp_dir)
-logging = detail.logging.Logging(polly_temp_dir, args.verbose)
+logging = detail.logging.Logging(cdir, args.verbose, args.discard, args.tail)
 
 if os.name == 'nt':
   # Windows
@@ -187,9 +266,6 @@ generate_command = [
     build_dir_option
 ]
 
-if toolchain_entry.vs_version and args.jobs:
-  generate_command.append("-DPOLLY_PARALLEL=YES")
-
 if args.config and not toolchain_entry.multiconfig:
   generate_command.append("-DCMAKE_BUILD_TYPE={}".format(args.config))
 
@@ -207,7 +283,7 @@ generate_command.append('-DCMAKE_VERBOSE_MAKEFILE=ON')
 generate_command.append('-DPOLLY_STATUS_DEBUG=ON')
 generate_command.append('-DHUNTER_STATUS_DEBUG=ON')
 
-if args.install:
+if add_install_prefix:
   generate_command.append(install_dir_option)
 
 if cpack_generator:
@@ -217,9 +293,13 @@ if args.fwd != None:
   for x in args.fwd:
     generate_command.append("-D{}".format(x))
 
+timer = detail.timer.Timer()
+
+timer.start('Generate')
 detail.generate_command.run(
-    generate_command, build_dir, polly_temp_dir, logging
+    generate_command, build_dir, polly_temp_dir, args.reconfig, logging
 )
+timer.stop()
 
 build_command = [
     'cmake',
@@ -231,9 +311,7 @@ if args.config:
   build_command.append('--config')
   build_command.append(args.config)
 
-if args.install:
-  build_command.append('--target')
-  build_command.append('install')
+build_command += target.args()
 
 # NOTE: This must be the last `build_command` modification!
 build_command.append('--')
@@ -251,19 +329,45 @@ if args.jobs:
   elif toolchain_entry.is_make and not toolchain_entry.is_nmake:
     build_command.append('-j')
     build_command.append('{}'.format(args.jobs))
+  elif toolchain_entry.is_msvc and (int(toolchain_entry.vs_version) >= 12):
+    build_command.append('/maxcpucount:{}'.format(args.jobs))
 
 if not args.nobuild:
-  detail.call.call(build_command, logging)
+  timer.start('Build')
+  detail.call.call(build_command, logging, sleep=1)
+  timer.stop()
+
+  if args.framework or args.framework_device:
+    timer.start('Framework creation')
+    detail.create_framework.run(
+        install_dir,
+        framework_dir,
+        toolchain_entry.ios_version,
+        polly_root,
+        args.framework_device,
+        logging,
+        args.plist,
+        args.identity
+    )
+    timer.stop()
 
 if not args.nobuild:
   os.chdir(build_dir)
-  if args.test:
-    detail.test_command.run(build_dir, args.config, logging)
+  if args.test or args.test_xml:
+    timer.start('Test')
+    detail.test_command.run(build_dir, args.config, logging, args.test_xml)
+    timer.stop()
   if args.pack:
+    timer.start('Pack')
     detail.pack_command.run(args.config, logging, cpack_generator)
+    timer.stop()
 
 if args.open:
   detail.open_project.open(toolchain_entry, build_dir, logging)
 
+print('-')
 print('Log saved: {}'.format(logging.log_path))
+print('-')
+timer.result()
+print('-')
 print('SUCCESS')

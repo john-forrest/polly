@@ -11,8 +11,13 @@ include("${CMAKE_CURRENT_LIST_DIR}/utilities/polly_clear_environment_variables.c
 
 include("${CMAKE_CURRENT_LIST_DIR}/utilities/polly_init.cmake")
 
+set(IOS_SDK_VERSION 8.1)
+set(POLLY_XCODE_COMPILER "clang")
 polly_init(
-    "iOS Universal (iphoneos + iphonesimulator) / No code sign / c++11 support"
+    "iOS ${IOS_SDK_VERSION} Universal (iphoneos + iphonesimulator) / \
+${POLLY_XCODE_COMPILER} / \
+No code sign / \
+c++11 support"
     "Xcode"
 )
 
@@ -56,7 +61,7 @@ endif()
 
 set(IPHONEOS_ARCHS armv7;armv7s;arm64)
 set(IPHONESIMULATOR_ARCHS i386;x86_64)
-set(IOS_SDK_VERSION 8.1)
 
+include("${CMAKE_CURRENT_LIST_DIR}/compiler/xcode.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/os/iphone.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/flags/cxx11.cmake")

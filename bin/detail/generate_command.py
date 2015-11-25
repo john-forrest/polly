@@ -1,33 +1,25 @@
 # Copyright (c) 2014-2015, Ruslan Baratov
 # All rights reserved.
 
+import difflib
 import os
 import sys
 
 import detail.call
 
-def run(generate_command, build_dir, polly_temp_dir, logging):
+def run(generate_command, build_dir, polly_temp_dir, reconfig, logging):
   if not os.path.exists(polly_temp_dir):
     os.makedirs(polly_temp_dir)
   saved_arguments_path = os.path.join(polly_temp_dir, 'saved-arguments')
-
-  saved_generate_command = []
-  for x in generate_command:
-    if x.startswith('-DCMAKE_VERBOSE_MAKEFILE='):
-      continue
-    if x.startswith('-DPOLLY_STATUS_DEBUG='):
-      continue
-    if x.startswith('-DHUNTER_STATUS_DEBUG='):
-      continue
-    if x.startswith('-DCMAKE_INSTALL_PREFIX='):
-      continue
-    saved_generate_command.append(x)
-
-  generate_command_oneline = ' '.join(saved_generate_command)
   cache_file = os.path.join(build_dir, 'CMakeCache.txt')
-  if not os.path.exists(cache_file):
+
+  generate_command_oneline = ' '.join(
+      [ '"{}"'.format(x) for x in generate_command]
+  )
+
+  if reconfig or not os.path.exists(saved_arguments_path):
+    detail.call.call(generate_command, logging, cache_file=cache_file, sleep=1)
     open(saved_arguments_path, 'w').write(generate_command_oneline)
-    detail.call.call(generate_command, logging, cache_file=cache_file)
     return
 
   # No need to generate project, just check that arguments not changed
@@ -36,7 +28,10 @@ def run(generate_command, build_dir, polly_temp_dir, logging):
     sys.exit(
         "\n== WARNING ==\n"
         "\nLooks like cmake arguments changed."
-        " Please remove build directory by adding '--clear'.\n\n"
-        "  Expected: {}\n\n"
-        "  Current: {}\n\n".format(expected, generate_command_oneline)
+        " You have two options to fix it:\n"
+        "  * Remove build directory completely"
+        " by adding '--clear' (works 100%)\n"
+        "  * Run configure again by adding '--reconfigure'"
+        " (you must understand how CMake cache variables works/updated)\n\n"
+        "{}".format("\n".join(difflib.ndiff([expected], [generate_command_oneline])))
     )
