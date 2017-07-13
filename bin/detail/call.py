@@ -4,22 +4,33 @@
 # Adapted to python3 version of: http://stackoverflow.com/questions/4984428
 
 import os
+import platform
 import subprocess
 import sys
 import threading
 import time
 
-def tee(infile, discard, log_file, console=None):
+# Tests:
+#
+# Windows:
+# * Control Panel -> Region -> Administrative -> Current languange for non-Unicode programs: "Russian (Russia)"
+# * cd to directory with name like 'привет' and run 'polly.py --verbose'
+
+def tee(infile, discard, logging, console=None):
   """Print `infile` to `files` in a separate thread."""
   def fanout():
     discard_counter = 0
     for line in iter(infile.readline, b''):
-      s = line.decode('utf-8')
+      # use the same encoding as stdout/stderr
+      s = line.decode(
+          encoding=sys.stdout.encoding,
+          errors='replace'
+      )
       s = s.replace('\r', '')
       s = s.replace('\t', '  ')
       s = s.rstrip() # strip spaces and EOL
       s += '\n' # append stripped EOL back
-      log_file.write(s)
+      logging.write(s)
       if console is None:
         continue
       if discard is None:
@@ -46,12 +57,12 @@ def teed_call(cmd_args, logging):
   )
   threads = []
 
-  if logging.verbose:
-    threads.append(tee(p.stdout, logging.discard, logging.log_file, sys.stdout))
-    threads.append(tee(p.stderr, logging.discard, logging.log_file, sys.stderr))
+  if logging.verbosity != 'silent':
+    threads.append(tee(p.stdout, logging.discard, logging, sys.stdout))
+    threads.append(tee(p.stderr, logging.discard, logging, sys.stderr))
   else:
-    threads.append(tee(p.stdout, logging.discard, logging.log_file))
-    threads.append(tee(p.stderr, logging.discard, logging.log_file))
+    threads.append(tee(p.stdout, logging.discard, logging))
+    threads.append(tee(p.stderr, logging.discard, logging))
 
   for t in threads:
     t.join() # wait for IO completion
@@ -64,16 +75,16 @@ def call(call_args, logging, cache_file='', ignore=False, sleep=0):
     pretty += '  `{}`\n'.format(i)
   pretty += ']\n'
   print(pretty)
-  logging.log_file.write(pretty)
+  logging.write(pretty)
 
   # print one line version
   oneline = ''
   for i in call_args:
     oneline += ' "{}"'.format(i)
   oneline = "[{}]>{}\n".format(os.getcwd(), oneline)
-  if logging.verbose:
+  if logging.verbosity != 'silent':
     print(oneline)
-  logging.log_file.write(oneline)
+  logging.write(oneline)
 
   x = teed_call(call_args, logging)
   if x == 0 or ignore:
