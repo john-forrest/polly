@@ -25,7 +25,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/utilities/polly_common.cmake")
 include(polly_fatal_error)
 
 # Fix try_compile
-set(MACOSX_BUNDLE_GUI_IDENTIFIER com.example)
+include(polly_ios_bundle_identifier)
 set(CMAKE_MACOSX_BUNDLE YES)
 set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "iPhone Developer")
 
@@ -35,3 +35,5 @@ set(IPHONESIMULATOR_ARCHS x86_64)
 include("${CMAKE_CURRENT_LIST_DIR}/compiler/xcode.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/os/iphone.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/flags/cxx11.cmake")
+
+include("${CMAKE_CURRENT_LIST_DIR}/utilities/polly_ios_development_team.cmake")
