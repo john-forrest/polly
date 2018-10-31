@@ -1,10 +1,10 @@
-# Copyright (c) 2017-2018, Ruslan Baratov
+# Copyright (c) 2017, Ruslan Baratov
 # All rights reserved.
 
-if(DEFINED POLLY_IOS_12_0_DEP_9_3_ARM64_CMAKE_)
+if(DEFINED POLLY_IOS_12_0_DEP_9_3_DEVICE_BITCODE_CMAKE_)
   return()
 else()
-  set(POLLY_IOS_12_0_DEP_9_3_ARM64_CMAKE_ 1)
+  set(POLLY_IOS_12_0_DEP_9_3_DEVICE_BITCODE_CMAKE_ 1)
 endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/utilities/polly_clear_environment_variables.cmake")
@@ -18,7 +18,8 @@ set(POLLY_XCODE_COMPILER "clang")
 polly_init(
     "iOS ${IOS_SDK_VERSION} / Deployment ${IOS_DEPLOYMENT_SDK_VERSION} / Universal (arm64) / \
 ${POLLY_XCODE_COMPILER} / \
-c++14 support"
+bitcode / \
+c++11 support"
     "Xcode"
 )
 
@@ -33,10 +34,11 @@ set(CMAKE_MACOSX_BUNDLE YES)
 set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "iPhone Developer")
 
 set(IPHONEOS_ARCHS arm64)
-set(IPHONESIMULATOR_ARCHS x86_64)
+set(IPHONESIMULATOR_ARCHS i386;x86_64)
 
 include("${CMAKE_CURRENT_LIST_DIR}/compiler/xcode.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/os/iphone.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/flags/cxx14.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/flags/bitcode.cmake") # after os/iphone.cmake
 
 include("${CMAKE_CURRENT_LIST_DIR}/utilities/polly_ios_development_team.cmake")
