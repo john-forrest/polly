@@ -29,6 +29,7 @@ Clang / PIC / c++14 support / libc++ static"
 include("${CMAKE_CURRENT_LIST_DIR}/utilities/polly_common.cmake")
 
 include("${CMAKE_CURRENT_LIST_DIR}/flags/cxx14.cmake") # before toolchain!
-include("${CMAKE_CURRENT_LIST_DIR}/flags/fpic.cmake")
 
 include("${CMAKE_CURRENT_LIST_DIR}/os/android.cmake")
+
+include("${CMAKE_CURRENT_LIST_DIR}/flags/fpic.cmake")
