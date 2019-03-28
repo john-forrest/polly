@@ -20,10 +20,9 @@ else()
   polly_add_cache_flag(CMAKE_C_FLAGS_INIT "-fPIC")
   polly_add_cache_flag(CMAKE_CXX_FLAGS_INIT "-fPIC")
   polly_add_cache_flag(CMAKE_Fortran_FLAGS_INIT "-fPIC")
+  # CMake doesn't add "-pie" by default for executables (CMake issue #14983)
+  polly_add_cache_flag(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pie")
 endif()
-# CMake doesn't add "-pie" by default for executables (CMake issue #14983)
-polly_add_cache_flag(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pie")
-
 set(
     CMAKE_POSITION_INDEPENDENT_CODE
     TRUE
