@@ -22,7 +22,7 @@ set(CMAKE_ANDROID_STL_TYPE "c++_static") # LLVM libc++ static
 polly_init(
     "Android NDK ${ANDROID_NDK_VERSION} / \
 API ${CMAKE_SYSTEM_VERSION} / ${CMAKE_ANDROID_ARCH_ABI} / \
-NEON / Clang / PIC / c++14 support / libc++ static"
+NEON / Clang / c++14 support / libc++ static"
     "Unix Makefiles"
 )
 
@@ -32,4 +32,3 @@ include("${CMAKE_CURRENT_LIST_DIR}/flags/cxx14.cmake") # before toolchain!
 
 include("${CMAKE_CURRENT_LIST_DIR}/os/android.cmake")
 
-include("${CMAKE_CURRENT_LIST_DIR}/flags/fpic.cmake")
